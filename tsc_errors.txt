@@ -1,0 +1,10 @@
+﻿components/HomeScreen/Widgets/CalendarPeekWidget.tsx(3,24): error TS2307: Cannot find module '../../constants/Colors' or its corresponding type declarations.
+components/HomeScreen/Widgets/CalendarPeekWidget.tsx(4,24): error TS2307: Cannot find module '../../constants/Layout' or its corresponding type declarations.
+components/HomeScreen/Widgets/HabitsWidget.tsx(3,24): error TS2307: Cannot find module '../../constants/Colors' or its corresponding type declarations.
+components/HomeScreen/Widgets/HabitsWidget.tsx(4,24): error TS2307: Cannot find module '../../constants/Layout' or its corresponding type declarations.
+components/HomeScreen/Widgets/NewsWidget.tsx(3,24): error TS2307: Cannot find module '../../constants/Colors' or its corresponding type declarations.
+components/HomeScreen/Widgets/NewsWidget.tsx(4,24): error TS2307: Cannot find module '../../constants/Layout' or its corresponding type declarations.
+components/HomeScreen/Widgets/TodayTasksWidget.tsx(3,24): error TS2307: Cannot find module '../../constants/Colors' or its corresponding type declarations.
+components/HomeScreen/Widgets/TodayTasksWidget.tsx(4,24): error TS2307: Cannot find module '../../constants/Layout' or its corresponding type declarations.
+components/HomeScreen/Widgets/WeatherWidget.tsx(3,24): error TS2307: Cannot find module '../../constants/Colors' or its corresponding type declarations.
+components/HomeScreen/Widgets/WeatherWidget.tsx(4,24): error TS2307: Cannot find module '../../constants/Layout' or its corresponding type declarations.

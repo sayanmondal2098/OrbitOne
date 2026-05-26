@@ -1,0 +1,43 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient circle -->
+  <defs>
+    <radialGradient id="orbitGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:0.05" />
+    </radialGradient>
+  </defs>
+  
+  <circle cx="100" cy="100" r="85" fill="url(#orbitGradient)"/>
+  
+  <!-- Orbiting planets/spheres -->
+  <g transform="translate(100, 100)">
+    <!-- Orbit path 1 -->
+    <circle cx="0" cy="0" r="50" fill="none" stroke="#6366F1" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+    
+    <!-- Planet 1 (top) -->
+    <circle cx="0" cy="-50" r="8" fill="#667EEA"/>
+    <circle cx="0" cy="-50" r="5" fill="#6366F1" opacity="0.7"/>
+    
+    <!-- Orbit path 2 -->
+    <circle cx="0" cy="0" r="65" fill="none" stroke="#8B5CF6" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+    
+    <!-- Planet 2 (right) -->
+    <circle cx="65" cy="0" r="6" fill="#F093FB"/>
+    <circle cx="65" cy="0" r="3" fill="#EC4899" opacity="0.7"/>
+    
+    <!-- Orbit path 3 -->
+    <circle cx="0" cy="0" r="40" fill="none" stroke="#764BA2" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+    
+    <!-- Planet 3 (bottom-left) -->
+    <circle cx="-35" cy="25" r="7" fill="#43E97B"/>
+    <circle cx="-35" cy="25" r="4" fill="#38F9D7" opacity="0.7"/>
+    
+    <!-- Central nucleus -->
+    <circle cx="0" cy="0" r="12" fill="#6366F1"/>
+    <circle cx="0" cy="0" r="8" fill="#8B5CF6" opacity="0.8"/>
+    <circle cx="-3" cy="-3" r="3" fill="#FFF" opacity="0.5"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="180" text-anchor="middle" font-family="Arial" font-size="16" fill="#6366F1" font-weight="bold">OrbitOne</text>
+</svg>

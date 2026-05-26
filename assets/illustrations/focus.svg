@@ -1,0 +1,32 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="90" fill="#FFF5F9" opacity="0.5"/>
+  
+  <!-- Focus/Brain illustration -->
+  <g transform="translate(100, 90)">
+    <!-- Brain outline -->
+    <path d="M -30 10 Q -30 -20 -15 -25 Q 0 -35 15 -25 Q 30 -20 30 10 Q 30 35 0 40 Q -30 35 -30 10" fill="#F093FB" opacity="0.2"/>
+    
+    <!-- Brain lobes -->
+    <circle cx="-12" cy="-5" r="10" fill="#F093FB" opacity="0.5"/>
+    <circle cx="12" cy="-5" r="10" fill="#F093FB" opacity="0.5"/>
+    <circle cx="-18" cy="10" r="8" fill="#F5576C" opacity="0.4"/>
+    <circle cx="18" cy="10" r="8" fill="#F5576C" opacity="0.4"/>
+    
+    <!-- Light bulb idea -->
+    <circle cx="0" cy="-30" r="6" fill="#FFD700" opacity="0.8"/>
+    <path d="M -3 -24 L -3 -20 M 0 -24 L 0 -20 M 3 -24 L 3 -20" stroke="#FFA500" stroke-width="1.5"/>
+    
+    <!-- Connection lines -->
+    <line x1="-12" y1="0" x2="12" y2="0" stroke="#F093FB" stroke-width="1" opacity="0.3"/>
+    <line x1="0" y1="-15" x2="0" y2="5" stroke="#F093FB" stroke-width="1" opacity="0.3"/>
+    
+    <!-- Nodes -->
+    <circle cx="-10" cy="-2" r="2" fill="#F5576C"/>
+    <circle cx="10" cy="-2" r="2" fill="#F5576C"/>
+    <circle cx="0" cy="8" r="2" fill="#F5576C"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="175" text-anchor="middle" font-family="Arial" font-size="14" fill="#F5576C" font-weight="bold">Stay Focused</text>
+</svg>

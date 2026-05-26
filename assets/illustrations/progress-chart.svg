@@ -1,0 +1,34 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="90" fill="#F0FFF4" opacity="0.5"/>
+  
+  <!-- Chart/Analytics illustration -->
+  <g transform="translate(100, 90)">
+    <!-- Bars -->
+    <!-- Bar 1 -->
+    <rect x="-30" y="0" width="12" height="25" fill="#667EEA" rx="2" opacity="0.6"/>
+    <rect x="-30" y="0" width="12" height="15" fill="#667EEA" rx="2"/>
+    
+    <!-- Bar 2 -->
+    <rect x="-12" y="0" width="12" height="35" fill="#43E97B" rx="2" opacity="0.6"/>
+    <rect x="-12" y="0" width="12" height="25" fill="#43E97B" rx="2"/>
+    
+    <!-- Bar 3 -->
+    <rect x="6" y="0" width="12" height="32" fill="#F093FB" rx="2" opacity="0.6"/>
+    <rect x="6" y="0" width="12" height="22" fill="#F093FB" rx="2"/>
+    
+    <!-- Bar 4 -->
+    <rect x="24" y="0" width="12" height="28" fill="#FFB347" rx="2" opacity="0.6"/>
+    <rect x="24" y="0" width="12" height="18" fill="#FFB347" rx="2"/>
+    
+    <!-- Grid line -->
+    <line x1="-40" y1="0" x2="40" y2="0" stroke="#ccc" stroke-width="1" opacity="0.5"/>
+    
+    <!-- Arrow/trend -->
+    <line x1="-35" y1="35" x2="35" y2="-5" stroke="#43E97B" stroke-width="2" opacity="0.4" stroke-dasharray="3,3"/>
+    <polygon points="35,-5 32,-1 33,-8" fill="#43E97B" opacity="0.6"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="175" text-anchor="middle" font-family="Arial" font-size="14" fill="#43E97B" font-weight="bold">Progress</text>
+</svg>

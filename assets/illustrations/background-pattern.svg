@@ -1,0 +1,30 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" fill="#F8F9FF"/>
+  
+  <!-- Decorative circles pattern -->
+  <defs>
+    <pattern id="dotPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="2" fill="#6366F1" opacity="0.15"/>
+    </pattern>
+  </defs>
+  
+  <!-- Apply pattern -->
+  <rect width="200" height="200" fill="url(#dotPattern)"/>
+  
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:0.05" />
+      <stop offset="50%" style="stop-color:#8B5CF6;stop-opacity:0.03" />
+      <stop offset="100%" style="stop-color:#EC4899;stop-opacity:0.02" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="200" fill="url(#bgGradient)"/>
+  
+  <!-- Decorative blobs -->
+  <ellipse cx="160" cy="40" rx="35" ry="25" fill="#667EEA" opacity="0.08"/>
+  <ellipse cx="40" cy="160" rx="40" ry="30" fill="#EC4899" opacity="0.08"/>
+  <ellipse cx="180" cy="170" rx="25" ry="35" fill="#43E97B" opacity="0.06"/>
+</svg>

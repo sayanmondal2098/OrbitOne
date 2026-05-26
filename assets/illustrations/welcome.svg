@@ -1,0 +1,35 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="90" fill="#F0F8FF" opacity="0.5"/>
+  
+  <!-- Welcome illustration -->
+  <g transform="translate(100, 70)">
+    <!-- Person/figure -->
+    <!-- Head -->
+    <circle cx="0" cy="-25" r="12" fill="#667EEA"/>
+    
+    <!-- Body -->
+    <rect x="-10" y="-8" width="20" height="18" fill="#667EEA" rx="3"/>
+    
+    <!-- Arms -->
+    <rect x="-15" y="-5" width="10" height="6" fill="#667EEA" rx="3" transform="rotate(-30 -10 -2)"/>
+    <rect x="5" y="-5" width="10" height="6" fill="#667EEA" rx="3" transform="rotate(30 10 -2)"/>
+    
+    <!-- Legs -->
+    <rect x="-6" y="12" width="5" height="12" fill="#764BA2" rx="2"/>
+    <rect x="1" y="12" width="5" height="12" fill="#764BA2" rx="2"/>
+    
+    <!-- Smile/happy face -->
+    <circle cx="-4" cy="-28" r="1.5" fill="#FFF"/>
+    <circle cx="4" cy="-28" r="1.5" fill="#FFF"/>
+    <path d="M -2 -24 Q 0 -22 2 -24" fill="none" stroke="#FFF" stroke-width="1" stroke-linecap="round"/>
+    
+    <!-- Stars around -->
+    <text x="-20" y="-25" font-size="16">✨</text>
+    <text x="20" y="-15" font-size="14">✨</text>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="170" text-anchor="middle" font-family="Arial" font-size="14" fill="#667EEA" font-weight="bold">Welcome!</text>
+  <text x="100" y="188" text-anchor="middle" font-family="Arial" font-size="11" fill="#667EEA" opacity="0.7">Get started today</text>
+</svg>

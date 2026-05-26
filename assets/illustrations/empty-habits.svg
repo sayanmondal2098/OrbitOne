@@ -1,0 +1,28 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <circle cx="100" cy="100" r="90" fill="#F0FFF4" opacity="0.5"/>
+  
+  <!-- Flame/Fire -->
+  <g transform="translate(100, 60)">
+    <!-- Outer flame glow -->
+    <ellipse cx="0" cy="0" rx="25" ry="35" fill="#43E97B" opacity="0.15"/>
+    
+    <!-- Main flame -->
+    <path d="M 0 -30 Q -15 -10 -15 10 Q -15 30 0 35 Q 15 30 15 10 Q 15 -10 0 -30" fill="#43E97B"/>
+    
+    <!-- Inner flame highlight -->
+    <path d="M 0 -20 Q -8 -5 -8 10 Q -8 22 0 25 Q 8 22 8 10 Q 8 -5 0 -20" fill="#38F9D7" opacity="0.7"/>
+    
+    <!-- Sparkle -->
+    <circle cx="-8" cy="-5" r="2" fill="#FFF"/>
+  </g>
+  
+  <!-- Streak counter -->
+  <g transform="translate(100, 130)">
+    <circle cx="0" cy="0" r="20" fill="#43E97B" opacity="0.2"/>
+    <text x="0" y="6" text-anchor="middle" font-family="Arial" font-size="18" fill="#43E97B" font-weight="bold">7</text>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="180" text-anchor="middle" font-family="Arial" font-size="14" fill="#43E97B" font-weight="bold">Start a Streak!</text>
+</svg>
