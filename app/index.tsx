@@ -263,6 +263,10 @@ export default function HomeScreen() {
     } = useNews();
 
     const [activeArticle, setActiveArticle] = useState<any | null>(null);
+    const currentActiveArticle = React.useMemo(() => {
+        if (!activeArticle) return null;
+        return articles.find(a => a.id === activeArticle.id) || activeArticle;
+    }, [articles, activeArticle]);
     const [readerVisible, setReaderVisible] = useState(false);
     const [cameFromDrawer, setCameFromDrawer] = useState(false);
     const [sourcesModalVisible, setSourcesModalVisible] = useState(false);
@@ -883,12 +887,12 @@ export default function HomeScreen() {
                 statusBarTranslucent={true}
                 onRequestClose={handleCloseReader}
             >
-                {activeArticle && (
+                {currentActiveArticle && (
                     <SafeAreaProvider>
                         <SafeAreaView style={[styles.readerContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
                         {/* Immersive Category Gradient Header */}
                         <LinearGradient
-                            colors={[activeArticle.color1 + '1a', activeArticle.color2 + '05']}
+                            colors={[currentActiveArticle.color1 + '1a', currentActiveArticle.color2 + '05']}
                             style={styles.readerGlowHeader}
                         >
                             <View style={styles.readerTopActions}>
@@ -903,29 +907,29 @@ export default function HomeScreen() {
                                     {/* Mark Read/Unread Manual Action */}
                                     <TouchableOpacity 
                                         style={styles.readerActionBtn}
-                                        onPress={() => toggleArticleReadStatus(activeArticle.id)}
+                                        onPress={() => toggleArticleReadStatus(currentActiveArticle.id)}
                                     >
                                         <Ionicons 
-                                            name={activeArticle.read ? "eye-off-outline" : "eye-outline"} 
+                                            name={currentActiveArticle.read ? "eye-off-outline" : "eye-outline"} 
                                             size={22} 
                                             color={colors.textSecondary} 
                                         />
                                         <Text style={styles.readerActionText}>
-                                            {activeArticle.read ? 'Keep Unread' : 'Mark Read'}
+                                            {currentActiveArticle.read ? 'Keep Unread' : 'Mark Read'}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
                             
                             <View style={styles.readerHeaderMeta}>
-                                <View style={[styles.categoryBadge, { backgroundColor: activeArticle.color1 }]}>
-                                    <Text style={styles.categoryBadgeText}>{activeArticle.category}</Text>
+                                <View style={[styles.categoryBadge, { backgroundColor: currentActiveArticle.color1 }]}>
+                                    <Text style={styles.categoryBadgeText}>{currentActiveArticle.category}</Text>
                                 </View>
-                                <Text style={styles.readerTitle}>{activeArticle.title}</Text>
+                                <Text style={styles.readerTitle}>{currentActiveArticle.title}</Text>
                                 <View style={styles.readerSubRow}>
                                     <Ionicons name="newspaper-outline" size={14} color={colors.textSecondary} />
                                     <Text style={styles.readerMetaText}>
-                                        {activeArticle.sourceName} • {activeArticle.time}
+                                        {currentActiveArticle.sourceName} • {currentActiveArticle.time}
                                     </Text>
                                 </View>
                             </View>
@@ -938,7 +942,7 @@ export default function HomeScreen() {
                             showsVerticalScrollIndicator={false}
                         >
                             <Text style={styles.readerBodyText}>
-                                {activeArticle.content}
+                                {currentActiveArticle.content}
                             </Text>
 
                             <View style={styles.readerFooterSeparator} />
@@ -957,8 +961,8 @@ export default function HomeScreen() {
                                     Alert.alert('Open Original Source', 'Redirecting to native news browser...', [
                                         { text: 'Cancel', style: 'cancel' },
                                         { text: 'Open Feed', onPress: () => {
-                                            if (activeArticle.url) {
-                                                Linking.openURL(activeArticle.url);
+                                            if (currentActiveArticle.url) {
+                                                Linking.openURL(currentActiveArticle.url);
                                             } else {
                                                 Alert.alert('Demo Source', 'Custom feed mock link opened successfully.');
                                             }
