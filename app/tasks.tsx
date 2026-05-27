@@ -612,6 +612,7 @@ export default function TasksScreen() {
                 visible={optionsModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setOptionsModalVisible(false)}
             >
                 <TouchableOpacity 
@@ -695,6 +696,7 @@ export default function TasksScreen() {
                 visible={addEditModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setAddEditModalVisible(false)}
             >
                 <KeyboardAvoidingView

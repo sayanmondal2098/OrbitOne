@@ -7,6 +7,7 @@ import { LocationProvider } from '../context/LocationContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { TasksProvider } from '../context/TasksContext';
 import { NewsProvider } from '../context/NewsContext';
+import { HabitsProvider } from '../context/HabitsContext';
 
 function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -95,7 +96,9 @@ export default function Layout() {
         <LocationProvider>
           <TasksProvider>
             <NewsProvider>
-              <TabsLayout />
+              <HabitsProvider>
+                <TabsLayout />
+              </HabitsProvider>
             </NewsProvider>
           </TasksProvider>
         </LocationProvider>

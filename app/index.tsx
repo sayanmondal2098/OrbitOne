@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, Modal, TextInput, Alert, Linking, RefreshControl } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -638,10 +638,12 @@ export default function HomeScreen() {
                 visible={showWeatherModal}
                 animationType="fade"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setShowWeatherModal(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <SafeAreaView style={styles.modalContainer}>
+                    <SafeAreaProvider>
+                        <SafeAreaView style={styles.modalContainer}>
                         <ScrollView 
                             style={styles.modalContent}
                             showsVerticalScrollIndicator={false}
@@ -868,7 +870,8 @@ export default function HomeScreen() {
                                 </LinearGradient>
                             )}
                         </ScrollView>
-                    </SafeAreaView>
+                        </SafeAreaView>
+                    </SafeAreaProvider>
                 </View>
             </Modal>
 
@@ -877,10 +880,12 @@ export default function HomeScreen() {
                 visible={readerVisible}
                 animationType="slide"
                 transparent={false}
+                statusBarTranslucent={true}
                 onRequestClose={handleCloseReader}
             >
                 {activeArticle && (
-                    <SafeAreaView style={[styles.readerContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+                    <SafeAreaProvider>
+                        <SafeAreaView style={[styles.readerContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
                         {/* Immersive Category Gradient Header */}
                         <LinearGradient
                             colors={[activeArticle.color1 + '1a', activeArticle.color2 + '05']}
@@ -964,7 +969,8 @@ export default function HomeScreen() {
                                 <Text style={styles.emptyNewsBtnText}>View Source Feed</Text>
                             </TouchableOpacity>
                         </ScrollView>
-                    </SafeAreaView>
+                        </SafeAreaView>
+                    </SafeAreaProvider>
                 )}
             </Modal>
 
@@ -973,6 +979,7 @@ export default function HomeScreen() {
                 visible={sourcesModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setSourcesModalVisible(false)}
             >
                 <TouchableOpacity 
@@ -980,7 +987,8 @@ export default function HomeScreen() {
                     activeOpacity={1} 
                     onPress={() => setSourcesModalVisible(false)}
                 >
-                    <SafeAreaView style={styles.newsDrawerContainer} edges={['bottom']}>
+                    <SafeAreaProvider>
+                        <SafeAreaView style={styles.newsDrawerContainer} edges={['bottom']}>
                         {/* Segment Tab Controller */}
                         <View style={styles.drawerHeader}>
                             <View style={styles.tabButtonsRow}>
@@ -1337,7 +1345,8 @@ export default function HomeScreen() {
                                 </View>
                             </ScrollView>
                         )}
-                    </SafeAreaView>
+                        </SafeAreaView>
+                    </SafeAreaProvider>
                 </TouchableOpacity>
             </Modal>
         </View>

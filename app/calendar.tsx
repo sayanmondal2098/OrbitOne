@@ -406,6 +406,7 @@ export default function CalendarScreen() {
                 visible={optionsModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setOptionsModalVisible(false)}
             >
                 <TouchableOpacity 
@@ -510,6 +511,7 @@ export default function CalendarScreen() {
                 visible={diagnosticsModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
                 onRequestClose={() => setDiagnosticsModalVisible(false)}
             >
                 <TouchableOpacity 

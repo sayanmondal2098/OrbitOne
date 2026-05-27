@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Switch, Modal, FlatList, TextInput, Alert } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
@@ -280,12 +280,14 @@ export default function ProfileScreen() {
             <Modal
                 visible={showLocationsModal}
                 animationType="slide"
+                statusBarTranslucent={true}
                 onRequestClose={() => {
                     setShowLocationsModal(false);
                     setSearchQuery('');
                 }}
             >
-                <SafeAreaView style={styles.modalContainer} edges={['top']}>
+                <SafeAreaProvider>
+                    <SafeAreaView style={styles.modalContainer} edges={['top']}>
                     <View style={styles.modalHeader}>
                         <TouchableOpacity onPress={() => {
                             setShowLocationsModal(false);
@@ -335,7 +337,8 @@ export default function ProfileScreen() {
                         contentContainerStyle={styles.listContainer}
                         scrollEnabled={true}
                     />
-                </SafeAreaView>
+                    </SafeAreaView>
+                </SafeAreaProvider>
             </Modal>
         </View>
     );
