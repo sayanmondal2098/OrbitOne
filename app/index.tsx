@@ -555,11 +555,15 @@ export default function HomeScreen() {
                                 </Text>
                             )}
                         </View>
-                        <TouchableOpacity onPress={() => {
-                            setActiveTab('feed');
-                            setSourcesModalVisible(true);
-                        }}>
-                            <Text style={styles.seeAll}>See All / Manage Feeds</Text>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setActiveTab('feed');
+                                setSourcesModalVisible(true);
+                            }}
+                            style={styles.headerIconButton}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="options-outline" size={20} color={colors.primary} />
                         </TouchableOpacity>
                     </View>
                     
@@ -1466,10 +1470,15 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
     },
-    seeAll: {
-        fontSize: 14,
-        color: colors.primary,
-        fontWeight: '600',
+    headerIconButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: colors.surfaceSecondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     liveDot: {
         width: 8,
