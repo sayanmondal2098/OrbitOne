@@ -1029,13 +1029,25 @@ export default function HomeScreen() {
                     <SafeAreaProvider style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }}>
                         <SafeAreaView style={[styles.newsDrawerContainer, { marginTop: insets.top + 16 }]} edges={['bottom']}>
                         {/* Segment Tab Controller */}
-                        <View style={styles.drawerHeader}>
+                        <View style={styles.drawerHeaderContainer}>
+                            <View style={styles.drawerHeaderTopRow}>
+                                <Text style={styles.drawerHeaderTitle}>News Manager</Text>
+                                <TouchableOpacity 
+                                    style={styles.drawerCloseIcon}
+                                    onPress={() => setSourcesModalVisible(false)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            
                             <View style={styles.tabButtonsRow}>
                                 <TouchableOpacity 
                                     style={[styles.tabButton, activeTab === 'feed' && styles.tabButtonActive]}
                                     onPress={() => setActiveTab('feed')}
+                                    activeOpacity={0.8}
                                 >
-                                    <Ionicons name="newspaper-outline" size={18} color={activeTab === 'feed' ? '#FFF' : colors.textSecondary} />
+                                    <Ionicons name="newspaper-outline" size={16} color={activeTab === 'feed' ? '#FFF' : colors.textSecondary} />
                                     <Text style={[styles.tabButtonText, activeTab === 'feed' && styles.tabButtonTextActive]}>
                                         Browse Feeds
                                     </Text>
@@ -1044,20 +1056,14 @@ export default function HomeScreen() {
                                 <TouchableOpacity 
                                     style={[styles.tabButton, activeTab === 'sources' && styles.tabButtonActive]}
                                     onPress={() => setActiveTab('sources')}
+                                    activeOpacity={0.8}
                                 >
-                                    <Ionicons name="options-outline" size={18} color={activeTab === 'sources' ? '#FFF' : colors.textSecondary} />
+                                    <Ionicons name="options-outline" size={16} color={activeTab === 'sources' ? '#FFF' : colors.textSecondary} />
                                     <Text style={[styles.tabButtonText, activeTab === 'sources' && styles.tabButtonTextActive]}>
-                                        Manage Sources
+                                        Manage Feeds
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                            
-                            <TouchableOpacity 
-                                style={styles.drawerCloseIcon}
-                                onPress={() => setSourcesModalVisible(false)}
-                            >
-                                <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
-                            </TouchableOpacity>
                         </View>
 
                         {activeTab === 'feed' ? (
@@ -1862,26 +1868,35 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         width: '100%',
         paddingTop: 12,
     },
-    drawerHeader: {
+    drawerHeaderContainer: {
+        paddingHorizontal: 20,
+        marginBottom: 16,
+        gap: 12,
+    },
+    drawerHeaderTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        marginBottom: 16,
+    },
+    drawerHeaderTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: colors.text,
     },
     tabButtonsRow: {
         flexDirection: 'row',
         backgroundColor: colors.surfaceSecondary,
         borderRadius: 20,
         padding: 3,
-        gap: 4,
+        alignSelf: 'stretch',
     },
     tabButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 6,
         paddingVertical: 8,
-        paddingHorizontal: 16,
         borderRadius: 18,
     },
     tabButtonActive: {
