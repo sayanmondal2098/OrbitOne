@@ -389,20 +389,22 @@ export default function HabitsScreen() {
                 </View>
 
                 {/* Celebratory perfect day confetti sheet */}
-                <Animated.View style={[styles.confettiCard, { transform: [{ scale: perfectDayScale }] }]}>
-                    <LinearGradient
-                        colors={['#EC4899', '#8B5CF6']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.confettiGradient}
-                    >
-                        <Ionicons name="sparkles" size={32} color="#FFF" />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.confettiTitle}>Perfect Day! 🏆</Text>
-                            <Text style={styles.confettiSub}>All habits completed today. You are unstoppable!</Text>
-                        </View>
-                    </LinearGradient>
-                </Animated.View>
+                {completionRate === 1 && totalCount > 0 && selectedDateStr === getLocalDateString(0) && (
+                    <Animated.View style={[styles.confettiCard, { transform: [{ scale: perfectDayScale }] }]}>
+                        <LinearGradient
+                            colors={['#EC4899', '#8B5CF6']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.confettiGradient}
+                        >
+                            <Ionicons name="sparkles" size={32} color="#FFF" />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.confettiTitle}>Perfect Day! 🏆</Text>
+                                <Text style={styles.confettiSub}>All habits completed today. You are unstoppable!</Text>
+                            </View>
+                        </LinearGradient>
+                    </Animated.View>
+                )}
 
                 {/* Active Habits Section */}
                 <View style={styles.section}>
