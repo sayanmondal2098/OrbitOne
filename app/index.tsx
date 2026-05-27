@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, Modal, TextInput, Alert, Linking, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/Colors';
 import { WelcomeIllustration } from '../components/illustrations';
 import { useLocation } from '../context/LocationContext';
@@ -95,8 +96,38 @@ function getHeaderTheme(hour: number): HeaderTheme {
     }
 }
 
+function getInitials(name: string): string {
+    if (!name) return 'JD';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 0) return 'JD';
+    if (parts.length === 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + (parts[1][0] || '')).toUpperCase();
+}
+
 export default function HomeScreen() {
     const insets = useSafeAreaInsets();
+    const [profileName, setProfileName] = useState('John Doe');
+
+    const loadProfileName = useCallback(async () => {
+        try {
+            const savedName = await AsyncStorage.getItem('orbitone_profile_name');
+            if (savedName) {
+                setProfileName(savedName);
+            } else {
+                setProfileName('John Doe');
+            }
+        } catch (e) {
+            console.log('Failed to load profile name on home:', e);
+        }
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadProfileName();
+        }, [loadProfileName])
+    );
     const weatherScale = useRef(new Animated.Value(0.8)).current;
     const weatherOpacity = useRef(new Animated.Value(0)).current;
     const { primaryLocation, weatherData, updateWeather, shouldRefreshWeather } = useLocation();
@@ -341,12 +372,16 @@ export default function HomeScreen() {
                             {headerTheme.subtitle}
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.avatarContainer}>
+                    <TouchableOpacity 
+                        style={styles.avatarContainer}
+                        onPress={() => router.push('/profile')}
+                        activeOpacity={0.8}
+                    >
                         <LinearGradient
                             colors={['#EC4899', '#F59E0B']}
                             style={styles.avatar}
                         >
-                            <Text style={styles.avatarText}>JD</Text>
+                            <Text style={styles.avatarText}>{getInitials(profileName)}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
