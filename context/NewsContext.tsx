@@ -241,20 +241,23 @@ const generateCustomArticles = (
 
     const selections = templates[category] || templates.Tech;
     const now = Date.now();
-    return selections.map((sel, idx) => ({
-        id: `custom-${sourceId}-${idx}-${now}`,
-        title: sel.title,
-        sourceId,
-        sourceName,
-        time: `${idx * 3 + 1}h ago`,
-        category,
-        content: sel.content,
-        read: false,
-        color1: '#8A2387',
-        color2: '#F27121',
-        url: sourceUrl || undefined,
-        publishedAt: now - idx * 3 * 60 * 60 * 1000 // Stagger creation times
-    }));
+    return selections.map((sel, idx) => {
+        const stableKey = sel.title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);
+        return {
+            id: `custom-${sourceId}-${idx}-${stableKey}`,
+            title: sel.title,
+            sourceId,
+            sourceName,
+            time: `${idx * 3 + 1}h ago`,
+            category,
+            content: sel.content,
+            read: false,
+            color1: '#8A2387',
+            color2: '#F27121',
+            url: sourceUrl || undefined,
+            publishedAt: now - idx * 3 * 60 * 60 * 1000 // Stagger creation times
+        };
+    });
 };
 
 // Live RSS Feed URLs for Curated Channels (Google News proxy for Reuters & Bloomberg to bypass scraping blocks)
@@ -381,20 +384,25 @@ const fetchFeedArticles = async (source: NewsSource): Promise<NewsArticle[]> => 
         const xmlText = await response.text();
         const parsed = parseRSSFeed(xmlText);
         const sourceColor = source.color || '#6366F1';
-        return parsed.map((item, idx) => ({
-            id: `${source.id}-${idx}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            title: item.title,
-            sourceId: source.id,
-            sourceName: source.name,
-            time: getRelativeTime(item.publishedAt),
-            category: source.category,
-            content: item.content,
-            read: false,
-            color1: sourceColor,
-            color2: getSecondaryColor(sourceColor),
-            url: item.url,
-            publishedAt: item.publishedAt
-        }));
+        return parsed.map((item, idx) => {
+            const stableKey = item.url 
+                ? item.url.replace(/[^a-zA-Z0-9]/g, '').slice(-60) 
+                : item.title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 60);
+            return {
+                id: `${source.id}-${stableKey}`,
+                title: item.title,
+                sourceId: source.id,
+                sourceName: source.name,
+                time: getRelativeTime(item.publishedAt),
+                category: source.category,
+                content: item.content,
+                read: false,
+                color1: sourceColor,
+                color2: getSecondaryColor(sourceColor),
+                url: item.url,
+                publishedAt: item.publishedAt
+            };
+        });
     } catch (e) {
         console.log(`Failed to fetch live feed for ${source.name}:`, e);
         return [];
@@ -414,20 +422,25 @@ const fetchRealRSSFeed = async (
         const response = await fetch(proxiedUrl);
         const xmlText = await response.text();
         const parsed = parseRSSFeed(xmlText);
-        return parsed.map((item, idx) => ({
-            id: `${sourceId}-${idx}-${Date.now()}`,
-            title: item.title,
-            sourceId,
-            sourceName,
-            time: getRelativeTime(item.publishedAt),
-            category,
-            content: item.content,
-            read: false,
-            color1: '#8A2387',
-            color2: '#F27121',
-            url: item.url,
-            publishedAt: item.publishedAt
-        }));
+        return parsed.map((item, idx) => {
+            const stableKey = item.url 
+                ? item.url.replace(/[^a-zA-Z0-9]/g, '').slice(-60) 
+                : item.title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 60);
+            return {
+                id: `${sourceId}-${stableKey}`,
+                title: item.title,
+                sourceId,
+                sourceName,
+                time: getRelativeTime(item.publishedAt),
+                category,
+                content: item.content,
+                read: false,
+                color1: '#8A2387',
+                color2: '#F27121',
+                url: item.url,
+                publishedAt: item.publishedAt
+            };
+        });
     } catch (e) {
         throw e;
     }

@@ -991,8 +991,8 @@ export default function HomeScreen() {
                     activeOpacity={1} 
                     onPress={() => setSourcesModalVisible(false)}
                 >
-                    <SafeAreaProvider>
-                        <SafeAreaView style={styles.newsDrawerContainer} edges={['bottom']}>
+                    <SafeAreaProvider style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }}>
+                        <SafeAreaView style={[styles.newsDrawerContainer, { marginTop: insets.top + 16 }]} edges={['bottom']}>
                         {/* Segment Tab Controller */}
                         <View style={styles.drawerHeader}>
                             <View style={styles.tabButtonsRow}>
@@ -1823,7 +1823,7 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         backgroundColor: colors.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        height: '90%',
+        flex: 1,
         width: '100%',
         paddingTop: 12,
     },
