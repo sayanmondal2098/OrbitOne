@@ -11,7 +11,8 @@ import {
     Animated, 
     LayoutAnimation, 
     Platform, 
-    UIManager 
+    UIManager,
+    KeyboardAvoidingView
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -516,8 +517,12 @@ export default function HabitsScreen() {
                 onRequestClose={() => setAddEditModalVisible(false)}
             >
                 <SafeAreaProvider>
-                    <SafeAreaView style={styles.modalOverlay}>
-                        <View style={styles.formCard}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={{ flex: 1 }}
+                    >
+                        <SafeAreaView style={styles.modalOverlay}>
+                            <View style={styles.formCard}>
                             <View style={styles.grabber} />
                             
                             <View style={styles.modalHeader}>
@@ -617,6 +622,7 @@ export default function HabitsScreen() {
                             </ScrollView>
                         </View>
                     </SafeAreaView>
+                    </KeyboardAvoidingView>
                 </SafeAreaProvider>
             </Modal>
 
