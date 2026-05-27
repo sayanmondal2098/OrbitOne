@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const TASKS_STORAGE_KEY = 'orbitone_tasks_v2'; // Bump version key for schema changes
 
 export interface Task {
-    id: number;
+    id: number | string;
     title: string;
     priority: 'high' | 'medium' | 'low';
     completed: boolean;
@@ -13,17 +13,20 @@ export interface Task {
     scheduledTime?: string;      // e.g. "10:30 AM" or "Morning"
     timeSpent: number;          // Total seconds accumulated
     timerRunning: boolean;      // Whether timer is active
+    isDeviceEvent?: boolean;
+    notes?: string;
+    location?: string;
 }
 
 interface TasksContextType {
     tasks: Task[];
     addTask: (title: string, priority: 'high' | 'medium' | 'low', category: string, scheduledTime?: string) => void;
-    editTask: (id: number, updates: Partial<Task>) => void;
-    deleteTask: (id: number) => void;
-    toggleTaskCompletion: (id: number) => void;
-    toggleTimer: (id: number) => void;
+    editTask: (id: number | string, updates: Partial<Task>) => void;
+    deleteTask: (id: number | string) => void;
+    toggleTaskCompletion: (id: number | string) => void;
+    toggleTimer: (id: number | string) => void;
     carryOverAll: (yesToToday: boolean) => void;
-    moveToToday: (id: number) => void;
+    moveToToday: (id: number | string) => void;
     promptDismissed: boolean;
     dismissPrompt: () => void;
     loading: boolean;
@@ -126,19 +129,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         saveTasksState(updated);
     };
 
-    const editTask = (id: number, updates: Partial<Task>) => {
+    const editTask = (id: number | string, updates: Partial<Task>) => {
         const updated = tasks.map(t => t.id === id ? { ...t, ...updates } : t);
         setTasks(updated);
         saveTasksState(updated);
     };
 
-    const deleteTask = (id: number) => {
+    const deleteTask = (id: number | string) => {
         const updated = tasks.filter(t => t.id !== id);
         setTasks(updated);
         saveTasksState(updated);
     };
 
-    const toggleTaskCompletion = (id: number) => {
+    const toggleTaskCompletion = (id: number | string) => {
         const updated = tasks.map(t => {
             if (t.id === id) {
                 const nextCompleted = !t.completed;
@@ -155,7 +158,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         saveTasksState(updated);
     };
 
-    const toggleTimer = (id: number) => {
+    const toggleTimer = (id: number | string) => {
         const updated = tasks.map(t => {
             if (t.id === id) {
                 const nextRunning = !t.timerRunning;
@@ -184,7 +187,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         setPromptDismissed(true);
     };
 
-    const moveToToday = (id: number) => {
+    const moveToToday = (id: number | string) => {
         const today = getLocalDateString(0);
         const updated = tasks.map(t => t.id === id ? { ...t, date: today } : t);
         setTasks(updated);

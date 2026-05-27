@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, Modal } from 'react-native';
+import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, Modal, TextInput, Alert, Linking, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { WelcomeIllustration } from '../components/illustrations';
 import { useLocation } from '../context/LocationContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTasks } from '../context/TasksContext';
+import { useNews } from '../context/NewsContext';
 import { fetchWeather, getWeatherIcon } from '../services/weatherService';
 
 /**
@@ -32,6 +33,68 @@ function getWindDirectionName(degrees: number): string {
     return directions[index % 16];
 }
 
+/**
+ * Get dynamic weather gradient colors based on the condition string
+ */
+function getWeatherGradientColors(condition: string): [string, string] {
+    const cond = (condition || '').toLowerCase();
+    if (cond.includes('sun') || cond.includes('clear')) {
+        return ['#FF8C00', '#FF3C83']; // Sunrise/Sunset glow (Vibrant orange to pink)
+    }
+    if (cond.includes('rain') || cond.includes('shower') || cond.includes('drizzle')) {
+        return ['#2A3650', '#4A6B82']; // Rainy slate blue to steel teal
+    }
+    if (cond.includes('cloud') || cond.includes('overcast') || cond.includes('mist') || cond.includes('fog')) {
+        return ['#3E4E6C', '#6C7E9D']; // Soft cloudy charcoal slate
+    }
+    if (cond.includes('snow') || cond.includes('ice') || cond.includes('freeze')) {
+        return ['#70A1FF', '#A0E7E5']; // Ice freeze light blue to aqua
+    }
+    if (cond.includes('thunder') || cond.includes('storm')) {
+        return ['#0F172A', '#3D1C5C']; // Dark stormy night
+    }
+    return ['#4FACFE', '#00F2FE']; // Default refreshing sky gradient
+}
+
+interface HeaderTheme {
+    greeting: string;
+    subtitle: string;
+    colors: [string, string];
+    icon: string;
+}
+
+function getHeaderTheme(hour: number): HeaderTheme {
+    if (hour >= 5 && hour < 12) {
+        return {
+            greeting: 'Good Morning 🌅',
+            subtitle: "Rise & shine! Let's get things done.",
+            colors: ['#FF5E62', '#FF9966'], // Vibrant morning sunrise
+            icon: 'sunny-outline',
+        };
+    } else if (hour >= 12 && hour < 17) {
+        return {
+            greeting: 'Good Afternoon ☀️',
+            subtitle: 'Hope you are having a wonderful day!',
+            colors: ['#4FACFE', '#00F2FE'], // Crisp sky blue
+            icon: 'sunny',
+        };
+    } else if (hour >= 17 && hour < 21) {
+        return {
+            greeting: 'Good Evening 🌆',
+            subtitle: 'Time to unwind and celebrate your wins.',
+            colors: ['#B24592', '#F15F79'], // Sunset warm purple-pink
+            icon: 'sunset-outline',
+        };
+    } else {
+        return {
+            greeting: 'Good Night 🌙',
+            subtitle: 'Rest well & recharge for tomorrow.',
+            colors: ['#0F2027', '#203A43'], // Midnight space slate
+            icon: 'moon-outline',
+        };
+    }
+}
+
 export default function HomeScreen() {
     const weatherScale = useRef(new Animated.Value(0.8)).current;
     const weatherOpacity = useRef(new Animated.Value(0)).current;
@@ -40,6 +103,72 @@ export default function HomeScreen() {
     const { tasks } = useTasks();
     const [isLoading, setIsLoading] = useState(false);
     const [showWeatherModal, setShowWeatherModal] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const pulseValue = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const pulse = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseValue, {
+                    toValue: 1.4,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseValue, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        pulse.start();
+        return () => pulse.stop();
+    }, []);
+
+    const [headerTheme, setHeaderTheme] = useState(() => getHeaderTheme(new Date().getHours()));
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setHeaderTheme(getHeaderTheme(new Date().getHours()));
+        }, 15000); // Check every 15 seconds to keep it absolutely active and responsive
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            const promises: Promise<any>[] = [syncNews()];
+            if (primaryLocation) {
+                promises.push((async () => {
+                    try {
+                        const weather = await fetchWeather(
+                            primaryLocation.latitude,
+                            primaryLocation.longitude,
+                            primaryLocation.id
+                        );
+                        updateWeather(primaryLocation.id, weather);
+                    } catch (e) {
+                        console.error('Error refreshing weather on pull:', e);
+                    }
+                })());
+            }
+            await Promise.all(promises);
+        } catch (error) {
+            console.error('Refresh failed:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const formatLastSynced = (timestamp: number | null): string => {
+        if (!timestamp) return '';
+        const diff = Date.now() - timestamp;
+        if (diff < 60000) return 'just now';
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        return `${hours}h ago`;
+    };
     
     const styles = React.useMemo(() => createStyles(colors), [colors]);
 
@@ -117,57 +246,96 @@ export default function HomeScreen() {
 
     const weather = primaryLocation ? weatherData.get(primaryLocation.id) : null;
 
-    const newsArticles = [
-        {
-            id: 1,
-            title: 'New AI Breakthroughs',
-            source: 'Tech Daily',
-            time: '2h ago',
-            color1: '#FF6B6B',
-            color2: '#FF8E53',
-        },
-        {
-            id: 2,
-            title: 'Climate Action Plan',
-            source: 'Green News',
-            time: '4h ago',
-            color1: '#4FACFE',
-            color2: '#00F2FE',
-        },
-        {
-            id: 3,
-            title: 'Innovation Awards',
-            source: 'Business Weekly',
-            time: '6h ago',
-            color1: '#43E97B',
-            color2: '#38F9D7',
-        },
-        {
-            id: 4,
-            title: 'Space Discovery',
-            source: 'Science Digest',
-            time: '8h ago',
-            color1: '#FA709A',
-            color2: '#FEE140',
-        },
-    ];
+    // Connect global interactive news context
+    const { 
+        articles, 
+        sources, 
+        toggleSourceSubscription, 
+        addCustomSource, 
+        deleteCustomSource, 
+        markArticleAsRead, 
+        toggleArticleReadStatus, 
+        markAllArticlesAsRead,
+        isSyncing,
+        lastSynced,
+        syncNews
+    } = useNews();
+
+    const [activeArticle, setActiveArticle] = useState<any | null>(null);
+    const [readerVisible, setReaderVisible] = useState(false);
+    const [cameFromDrawer, setCameFromDrawer] = useState(false);
+    const [sourcesModalVisible, setSourcesModalVisible] = useState(false);
+    const [activeTab, setActiveTab] = useState<'feed' | 'sources'>('feed');
+    const [newsSearchQuery, setNewsSearchQuery] = useState('');
+    const [newsReadFilter, setNewsReadFilter] = useState<'all' | 'unread' | 'read'>('all');
+    const [newsCategoryFilter, setNewsCategoryFilter] = useState<string>('All');
+    const [headerExpanded, setHeaderExpanded] = useState(false);
+
+    // Add Custom Source states
+    const [newSourceName, setNewSourceName] = useState('');
+    const [newSourceUrl, setNewSourceUrl] = useState('');
+    const [newSourceCategory, setNewSourceCategory] = useState<'Tech' | 'Business' | 'Science' | 'Design' | 'World'>('Tech');
+
+    const handleCloseReader = () => {
+        setReaderVisible(false);
+        if (cameFromDrawer) {
+            setTimeout(() => {
+                setSourcesModalVisible(true);
+                setCameFromDrawer(false);
+            }, 400);
+        }
+    };
 
     const moods = ['Great', 'Perfect', 'Good', 'Cool'];
+
+    const DAILY_TIPS = [
+        { icon: 'rocket-outline', title: 'Start Small, Win Big', body: 'Break your biggest goals into tiny daily actions. Momentum builds from the very first step. 🚀' },
+        { icon: 'bulb-outline', title: 'Protect Your Focus', body: 'Deep work happens in uninterrupted blocks. Guard your calendar like it is your most valuable asset. 💡' },
+        { icon: 'fitness-outline', title: 'Energy Over Time', body: 'Manage your energy, not just your time. Peak performance follows great sleep, movement, and nutrition. ⚡' },
+        { icon: 'trophy-outline', title: 'Celebrate Every Win', body: 'Acknowledge your small victories. Positive reinforcement rewires your brain for consistency. 🏆' },
+        { icon: 'moon-outline', title: 'Rest is Productive', body: 'Recovery is part of the plan. A well-rested mind solves problems faster and creates better ideas. 🌙' },
+        { icon: 'trending-up-outline', title: 'Compound Your Habits', body: 'Getting 1% better every day means you will be 37× better by year\'s end. Trust the process. 📈' },
+        { icon: 'heart-outline', title: 'Be Kind to Yourself', body: 'Progress over perfection. Every expert was once a beginner who refused to quit. ❤️' },
+        { icon: 'compass-outline', title: 'Clarity Before Action', body: 'Spend five minutes planning your day each morning. Clarity eliminates wasted effort and decision fatigue. 🧭' },
+    ];
+
+    const [tipIndex, setTipIndex] = useState(0);
+
+    useEffect(() => {
+        const tipInterval = setInterval(() => {
+            setTipIndex(prev => (prev + 1) % DAILY_TIPS.length);
+        }, 7000);
+        return () => clearInterval(tipInterval);
+    }, []);
+
+    const currentTip = DAILY_TIPS[tipIndex];
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header with gradient */}
             <LinearGradient
-                colors={['#6366F1', '#8B5CF6']}
+                colors={headerTheme.colors}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
                 <View style={styles.headerContent}>
-                    <View>
-                        <Text style={styles.greeting}>Good Morning 👋</Text>
-                        <Text style={styles.name}>Welcome back!</Text>
-                    </View>
+                    <TouchableOpacity 
+                        style={{ flex: 1, paddingRight: 10 }}
+                        onPress={() => setHeaderExpanded(!headerExpanded)}
+                        activeOpacity={0.8}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name={headerTheme.icon as any} size={18} color="#FFF" style={{ opacity: 0.9 }} />
+                            <Text style={styles.greeting}>{headerTheme.greeting}</Text>
+                        </View>
+                        <Text 
+                            style={styles.name} 
+                            numberOfLines={headerExpanded ? undefined : 1}
+                        >
+                            {headerTheme.subtitle}
+                        </Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.avatarContainer}>
                         <LinearGradient
                             colors={['#EC4899', '#F59E0B']}
@@ -183,6 +351,14 @@ export default function HomeScreen() {
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={isRefreshing}
+                        onRefresh={handleRefresh}
+                        colors={['#6366F1']}
+                        tintColor="#6366F1"
+                    />
+                }
             >
                 {/* Animated Weather Widget at Top */}
                 <Animated.View 
@@ -205,7 +381,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <LinearGradient
-                                colors={['#4FACFE', '#00F2FE']}
+                                colors={getWeatherGradientColors(weather.condition)}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.weatherCard}
@@ -254,12 +430,16 @@ export default function HomeScreen() {
                                 </View>
 
                                 {/* Tap to expand hint */}
-                                <Text style={styles.tapHint}>Tap for 12-hour & 7-day forecast</Text>
+                                <View style={styles.tapHintContainer}>
+                                    <Ionicons name="chevron-down" size={13} color="#FFF" style={{ opacity: 0.8 }} />
+                                    <Text style={styles.tapHint}>Tap for 12-hour & 7-day forecast</Text>
+                                    <Ionicons name="chevron-down" size={13} color="#FFF" style={{ opacity: 0.8 }} />
+                                </View>
                             </LinearGradient>
                         </TouchableOpacity>
                     ) : (
                         <LinearGradient
-                            colors={['#4FACFE', '#00F2FE']}
+                            colors={['#6366F1', '#8B5CF6']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={[styles.weatherCard, styles.emptyWeatherCard]}
@@ -316,54 +496,141 @@ export default function HomeScreen() {
                 {/* News Section */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Top News</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.seeAll}>See All</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={styles.sectionTitle}>Top News</Text>
+                            {isSyncing ? (
+                                <ActivityIndicator size="small" color="#10B981" />
+                            ) : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Animated.View style={[
+                                        styles.liveDot,
+                                        { transform: [{ scale: pulseValue }] }
+                                    ]} />
+                                    <Text style={styles.liveText}>Live</Text>
+                                </View>
+                            )}
+                            {lastSynced && (
+                                <Text style={styles.lastSyncedText}>
+                                    Updated {formatLastSynced(lastSynced)}
+                                </Text>
+                            )}
+                        </View>
+                        <TouchableOpacity onPress={() => {
+                            setActiveTab('feed');
+                            setSourcesModalVisible(true);
+                        }}>
+                            <Text style={styles.seeAll}>See All / Manage Feeds</Text>
                         </TouchableOpacity>
                     </View>
                     
-                    {newsArticles.map((article) => (
-                        <TouchableOpacity key={article.id} style={styles.newsCard}>
-                            <LinearGradient
-                                colors={[article.color1, article.color2]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.newsIconContainer}
+                    {articles.length > 0 ? (
+                        articles.slice(0, 4).map((article) => (
+                            <TouchableOpacity 
+                                key={article.id} 
+                                style={styles.newsCard}
+                                onPress={() => {
+                                    setCameFromDrawer(false);
+                                    markArticleAsRead(article.id);
+                                    setActiveArticle(article);
+                                    setReaderVisible(true);
+                                }}
+                                activeOpacity={0.8}
                             >
-                                <Ionicons name="newspaper" size={24} color="#FFF" />
-                            </LinearGradient>
-                            <View style={styles.newsContent}>
-                                <Text style={styles.newsTitle}>{article.title}</Text>
-                                <Text style={styles.newsSource}>{article.source} • {article.time}</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                    ))}
+                                <LinearGradient
+                                    colors={[article.color1, article.color2]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.newsIconContainer}
+                                >
+                                    <Ionicons name="newspaper-outline" size={20} color="#FFF" />
+                                </LinearGradient>
+                                <View style={styles.newsContent}>
+                                    <Text style={styles.newsTitle} numberOfLines={2}>
+                                        {article.title}
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={styles.newsSource}>{article.sourceName} • {article.time}</Text>
+                                        <View style={[styles.miniCategoryBadge, { backgroundColor: article.color1 + '15' }]}>
+                                            <Text style={[styles.miniCategoryText, { color: article.color1 }]}>
+                                                {article.category}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                                
+                                {/* Glowing Cyan Unread Badge */}
+                                {!article.read && (
+                                    <View style={styles.unreadDot} />
+                                )}
+                                
+                                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={{ marginLeft: 6 }} />
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={styles.emptyNewsContainer}>
+                            <Ionicons name="newspaper-outline" size={40} color={colors.textTertiary} />
+                            <Text style={styles.emptyNewsText}>No news active</Text>
+                            <Text style={styles.emptyNewsSub}>
+                                Subscribe to some news sources in the News Manager to start reading daily updates!
+                            </Text>
+                            <TouchableOpacity 
+                                style={styles.emptyNewsBtn}
+                                onPress={() => {
+                                    setActiveTab('sources');
+                                    setSourcesModalVisible(true);
+                                }}
+                            >
+                                <Text style={styles.emptyNewsBtnText}>Manage Subscriptions</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
-                {/* Productivity Tip */}
+                {/* Daily Tip Card */}
                 <View style={styles.section}>
-                    <View style={styles.tipCard}>
-                        <View style={styles.tipIllustration}>
-                            <WelcomeIllustration width={100} height={100} />
+                    <LinearGradient
+                        colors={['#1E1B4B', '#312E81', '#4C1D95']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.tipCard}
+                    >
+                        {/* Decorative orb */}
+                        <View style={styles.tipOrbDecor} />
+
+                        <View style={styles.tipCardInner}>
+                            {/* Logo + Icon row */}
+                            <View style={styles.tipLogoRow}>
+                                <View style={styles.tipLogoWrap}>
+                                    <WelcomeIllustration width={72} height={72} />
+                                </View>
+                                <View style={styles.tipIconBadge}>
+                                    <Ionicons name={currentTip.icon as any} size={22} color="#A78BFA" />
+                                </View>
+                            </View>
+
+                            {/* Text block */}
+                            <View style={styles.tipTextBlock}>
+                                <View style={styles.tipLabelRow}>
+                                    <View style={styles.tipPill}>
+                                        <Text style={styles.tipPillText}>Daily Tip</Text>
+                                    </View>
+                                    {/* Dot indicators */}
+                                    <View style={styles.tipDots}>
+                                        {DAILY_TIPS.map((_, i) => (
+                                            <View
+                                                key={i}
+                                                style={[styles.tipDot, i === tipIndex && styles.tipDotActive]}
+                                            />
+                                        ))}
+                                    </View>
+                                </View>
+                                <Text style={styles.tipTitle}>{currentTip.title}</Text>
+                                <Text style={styles.tipText}>{currentTip.body}</Text>
+                            </View>
                         </View>
-                        <Text style={styles.tipTitle}>Stay Focused, Stay Productive</Text>
-                        <Text style={styles.tipText}>
-                            Break your goals into smaller tasks and celebrate each win! 🎉
-                        </Text>
-                    </View>
+                    </LinearGradient>
                 </View>
             </ScrollView>
-
-            {/* FAB */}
-            <TouchableOpacity style={styles.fab}>
-                <LinearGradient
-                    colors={['#6366F1', '#8B5CF6']}
-                    style={styles.fabGradient}
-                >
-                    <Ionicons name="add" size={28} color="#FFF" />
-                </LinearGradient>
-            </TouchableOpacity>
 
             {/* Weather Details Modal */}
             <Modal
@@ -374,14 +641,6 @@ export default function HomeScreen() {
             >
                 <View style={styles.modalOverlay}>
                     <SafeAreaView style={styles.modalContainer}>
-                        {/* Close Button */}
-                        <TouchableOpacity 
-                            style={styles.closeButton}
-                            onPress={() => setShowWeatherModal(false)}
-                        >
-                            <Ionicons name="close-circle" size={32} color="#FFF" />
-                        </TouchableOpacity>
-
                         <ScrollView 
                             style={styles.modalContent}
                             showsVerticalScrollIndicator={false}
@@ -389,11 +648,19 @@ export default function HomeScreen() {
                         >
                             {weather && primaryLocation && (
                                 <LinearGradient
-                                    colors={['#4FACFE', '#00F2FE']}
+                                    colors={getWeatherGradientColors(weather.condition)}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
                                     style={styles.modalGradient}
                                 >
+                                    {/* Sleek absolute close button inside expanded view */}
+                                    <TouchableOpacity 
+                                        style={styles.modalCloseFloatBtn}
+                                        onPress={() => setShowWeatherModal(false)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons name="close" size={20} color="#FFF" style={{ opacity: 0.9 }} />
+                                    </TouchableOpacity>
                                     {/* Main Weather Info */}
                                     <View style={styles.mainWeatherSection}>
                                         <Text style={styles.modalLocation}>{primaryLocation.name}</Text>
@@ -603,6 +870,475 @@ export default function HomeScreen() {
                     </SafeAreaView>
                 </View>
             </Modal>
+
+            {/* Immersive Reader View Modal */}
+            <Modal
+                visible={readerVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={handleCloseReader}
+            >
+                {activeArticle && (
+                    <SafeAreaView style={[styles.readerContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+                        {/* Immersive Category Gradient Header */}
+                        <LinearGradient
+                            colors={[activeArticle.color1 + '1a', activeArticle.color2 + '05']}
+                            style={styles.readerGlowHeader}
+                        >
+                            <View style={styles.readerTopActions}>
+                                <TouchableOpacity 
+                                    style={styles.readerCloseBtn}
+                                    onPress={handleCloseReader}
+                                >
+                                    <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                                
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    {/* Mark Read/Unread Manual Action */}
+                                    <TouchableOpacity 
+                                        style={styles.readerActionBtn}
+                                        onPress={() => toggleArticleReadStatus(activeArticle.id)}
+                                    >
+                                        <Ionicons 
+                                            name={activeArticle.read ? "eye-off-outline" : "eye-outline"} 
+                                            size={22} 
+                                            color={colors.textSecondary} 
+                                        />
+                                        <Text style={styles.readerActionText}>
+                                            {activeArticle.read ? 'Keep Unread' : 'Mark Read'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            
+                            <View style={styles.readerHeaderMeta}>
+                                <View style={[styles.categoryBadge, { backgroundColor: activeArticle.color1 }]}>
+                                    <Text style={styles.categoryBadgeText}>{activeArticle.category}</Text>
+                                </View>
+                                <Text style={styles.readerTitle}>{activeArticle.title}</Text>
+                                <View style={styles.readerSubRow}>
+                                    <Ionicons name="newspaper-outline" size={14} color={colors.textSecondary} />
+                                    <Text style={styles.readerMetaText}>
+                                        {activeArticle.sourceName} • {activeArticle.time}
+                                    </Text>
+                                </View>
+                            </View>
+                        </LinearGradient>
+
+                        {/* Article Content Scroll */}
+                        <ScrollView 
+                            style={styles.readerContentScroll}
+                            contentContainerStyle={styles.readerContentContainer}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <Text style={styles.readerBodyText}>
+                                {activeArticle.content}
+                            </Text>
+
+                            <View style={styles.readerFooterSeparator} />
+
+                            <View style={styles.readerPlatformDisclaimer}>
+                                <Ionicons name="shield-checkmark-outline" size={16} color={colors.textTertiary} />
+                                <Text style={styles.readerDisclaimerText}>
+                                    Clean Reader Mode enabled. Ad-free, tracking-free, optimized reading environment.
+                                </Text>
+                            </View>
+
+                            {/* Share & Open Links */}
+                            <TouchableOpacity 
+                                style={[styles.emptyNewsBtn, { alignSelf: 'center', marginTop: 12 }]}
+                                onPress={() => {
+                                    Alert.alert('Open Original Source', 'Redirecting to native news browser...', [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Open Feed', onPress: () => {
+                                            if (activeArticle.url) {
+                                                Linking.openURL(activeArticle.url);
+                                            } else {
+                                                Alert.alert('Demo Source', 'Custom feed mock link opened successfully.');
+                                            }
+                                        }}
+                                    ]);
+                                }}
+                            >
+                                <Text style={styles.emptyNewsBtnText}>View Source Feed</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </SafeAreaView>
+                )}
+            </Modal>
+
+            {/* News Sources & Feeds Browser Modal */}
+            <Modal
+                visible={sourcesModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setSourcesModalVisible(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setSourcesModalVisible(false)}
+                >
+                    <SafeAreaView style={styles.newsDrawerContainer} edges={['bottom']}>
+                        {/* Segment Tab Controller */}
+                        <View style={styles.drawerHeader}>
+                            <View style={styles.tabButtonsRow}>
+                                <TouchableOpacity 
+                                    style={[styles.tabButton, activeTab === 'feed' && styles.tabButtonActive]}
+                                    onPress={() => setActiveTab('feed')}
+                                >
+                                    <Ionicons name="newspaper-outline" size={18} color={activeTab === 'feed' ? '#FFF' : colors.textSecondary} />
+                                    <Text style={[styles.tabButtonText, activeTab === 'feed' && styles.tabButtonTextActive]}>
+                                        Browse Feeds
+                                    </Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={[styles.tabButton, activeTab === 'sources' && styles.tabButtonActive]}
+                                    onPress={() => setActiveTab('sources')}
+                                >
+                                    <Ionicons name="options-outline" size={18} color={activeTab === 'sources' ? '#FFF' : colors.textSecondary} />
+                                    <Text style={[styles.tabButtonText, activeTab === 'sources' && styles.tabButtonTextActive]}>
+                                        Manage Sources
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <TouchableOpacity 
+                                style={styles.drawerCloseIcon}
+                                onPress={() => setSourcesModalVisible(false)}
+                            >
+                                <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {activeTab === 'feed' ? (
+                            /* TAB 1: BROWSE FEEDS BROWSER */
+                            <View style={{ flex: 1 }}>
+                                {/* Search Articles Bar */}
+                                <View style={styles.newsSearchContainer}>
+                                    <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+                                    <TextInput
+                                        style={styles.newsSearchInput}
+                                        placeholder="Search articles..."
+                                        placeholderTextColor={colors.textTertiary}
+                                        value={newsSearchQuery}
+                                        onChangeText={setNewsSearchQuery}
+                                    />
+                                    {newsSearchQuery !== '' && (
+                                        <TouchableOpacity onPress={() => setNewsSearchQuery('')}>
+                                            <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                {/* Filter Sub-Bar */}
+                                <View style={styles.newsFilterRow}>
+                                    {/* Read Status Filters */}
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+                                        <TouchableOpacity 
+                                            style={[styles.newsFilterPill, newsReadFilter === 'all' && styles.newsFilterPillActive]}
+                                            onPress={() => setNewsReadFilter('all')}
+                                        >
+                                            <Text style={[styles.newsFilterPillText, newsReadFilter === 'all' && styles.newsFilterPillTextActive]}>
+                                                All ({articles.length})
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={[styles.newsFilterPill, newsReadFilter === 'unread' && styles.newsFilterPillActive]}
+                                            onPress={() => setNewsReadFilter('unread')}
+                                        >
+                                            <View style={[styles.unreadDotMini, { marginRight: 4 }]} />
+                                            <Text style={[styles.newsFilterPillText, newsReadFilter === 'unread' && styles.newsFilterPillTextActive]}>
+                                                Unread ({articles.filter(a => !a.read).length})
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={[styles.newsFilterPill, newsReadFilter === 'read' && styles.newsFilterPillActive]}
+                                            onPress={() => setNewsReadFilter('read')}
+                                        >
+                                            <Text style={[styles.newsFilterPillText, newsReadFilter === 'read' && styles.newsFilterPillTextActive]}>
+                                                Read
+                                            </Text>
+                                        </TouchableOpacity>
+                                        
+                                        <View style={{ width: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+
+                                        {/* Category Filters */}
+                                        {['All', 'Tech', 'Science', 'Business', 'World'].map(cat => (
+                                            <TouchableOpacity
+                                                key={cat}
+                                                style={[
+                                                    styles.newsFilterPill,
+                                                    newsCategoryFilter === cat && styles.newsFilterPillActive
+                                                ]}
+                                                onPress={() => setNewsCategoryFilter(cat)}
+                                            >
+                                                <Text style={[
+                                                    styles.newsFilterPillText,
+                                                    newsCategoryFilter === cat && styles.newsFilterPillTextActive
+                                                ]}>
+                                                    {cat}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+
+                                {/* Article Scroll Feed list */}
+                                <ScrollView 
+                                    style={{ flex: 1, paddingHorizontal: 16 }}
+                                    contentContainerStyle={{ paddingBottom: 40 }}
+                                    showsVerticalScrollIndicator={false}
+                                    refreshControl={
+                                        <RefreshControl
+                                            refreshing={isRefreshing}
+                                            onRefresh={handleRefresh}
+                                            colors={['#6366F1']}
+                                            tintColor="#6366F1"
+                                        />
+                                    }
+                                >
+                                    {articles
+                                        .filter(art => {
+                                            const matchesSearch = art.title.toLowerCase().includes(newsSearchQuery.toLowerCase()) || 
+                                                                art.sourceName.toLowerCase().includes(newsSearchQuery.toLowerCase());
+                                            const matchesRead = newsReadFilter === 'all' || 
+                                                                (newsReadFilter === 'unread' && !art.read) || 
+                                                                (newsReadFilter === 'read' && art.read);
+                                            const matchesCategory = newsCategoryFilter === 'All' || art.category === newsCategoryFilter;
+                                            return matchesSearch && matchesRead && matchesCategory;
+                                        })
+                                        .map(art => (
+                                            <TouchableOpacity
+                                                key={art.id}
+                                                style={styles.newsDrawerCard}
+                                                onPress={() => {
+                                                    setCameFromDrawer(true);
+                                                    setSourcesModalVisible(false);
+                                                    setTimeout(() => {
+                                                        markArticleAsRead(art.id);
+                                                        setActiveArticle(art);
+                                                        setReaderVisible(true);
+                                                    }, 300);
+                                                }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <View style={{ flex: 1 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                        <Text style={styles.newsDrawerSource}>{art.sourceName} • {art.time}</Text>
+                                                        <View style={[styles.miniCategoryBadge, { backgroundColor: art.color1 + '15' }]}>
+                                                            <Text style={[styles.miniCategoryText, { color: art.color1 }]}>
+                                                                {art.category}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    
+                                                    <Text style={[styles.newsDrawerTitle, art.read && { opacity: 0.65 }]} numberOfLines={2}>
+                                                        {art.title}
+                                                    </Text>
+                                                </View>
+                                                
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                    {/* Quick mark-as-read/unread toggler */}
+                                                    <TouchableOpacity 
+                                                        style={styles.drawerQuickActionBtn}
+                                                        onPress={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleArticleReadStatus(art.id);
+                                                        }}
+                                                    >
+                                                        <Ionicons 
+                                                            name={art.read ? "checkmark-circle" : "ellipse-outline"} 
+                                                            size={20} 
+                                                            color={art.read ? colors.success : colors.textSecondary} 
+                                                        />
+                                                    </TouchableOpacity>
+                                                    
+                                                    {!art.read && (
+                                                        <View style={styles.unreadDot} />
+                                                    )}
+                                                    <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))
+                                    }
+
+                                    {articles.length > 0 && articles.filter(art => {
+                                        const matchesSearch = art.title.toLowerCase().includes(newsSearchQuery.toLowerCase()) || 
+                                                            art.sourceName.toLowerCase().includes(newsSearchQuery.toLowerCase());
+                                        const matchesRead = newsReadFilter === 'all' || 
+                                                            (newsReadFilter === 'unread' && !art.read) || 
+                                                            (newsReadFilter === 'read' && art.read);
+                                        const matchesCategory = newsCategoryFilter === 'All' || art.category === newsCategoryFilter;
+                                        return matchesSearch && matchesRead && matchesCategory;
+                                    }).length === 0 && (
+                                        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                                            <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+                                            <Text style={[styles.emptyNewsText, { marginTop: 12 }]}>No matching articles</Text>
+                                            <Text style={styles.emptyNewsSub}>Adjust filters or clear your search to browse.</Text>
+                                        </View>
+                                    )}
+                                </ScrollView>
+                            </View>
+                        ) : (
+                            /* TAB 2: MANAGE NEWS FEED SOURCES */
+                            <ScrollView 
+                                style={{ flex: 1, paddingHorizontal: 16 }}
+                                contentContainerStyle={{ paddingBottom: 40 }}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                <Text style={styles.drawerSectionTitle}>Curated Channels</Text>
+                                <Text style={styles.drawerSectionSub}>
+                                    Toggle standard premium feeds to populate your dashboard timeline:
+                                </Text>
+
+                                <View style={styles.sourcesList}>
+                                    {sources.filter(s => !s.isCustom).map(src => (
+                                        <View key={src.id} style={styles.sourceItemRow}>
+                                            <View style={[styles.sourceItemBullet, { backgroundColor: src.color }]} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.sourceItemName}>{src.name}</Text>
+                                                <Text style={styles.sourceItemMeta}>{src.category} news</Text>
+                                            </View>
+                                            
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.sourceToggleBtn,
+                                                    src.subscribed && styles.sourceToggleBtnActive
+                                                ]}
+                                                onPress={() => toggleSourceSubscription(src.id)}
+                                            >
+                                                <Text style={[
+                                                    styles.sourceToggleText,
+                                                    src.subscribed && styles.sourceToggleTextActive
+                                                ]}>
+                                                    {src.subscribed ? 'Subscribed' : 'Subscribe'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                {/* Custom news channels section */}
+                                <View style={styles.separator} />
+                                <Text style={styles.drawerSectionTitle}>Custom Sources</Text>
+                                <Text style={styles.drawerSectionSub}>
+                                    Add your own RSS feeds or custom news categories:
+                                </Text>
+
+                                {sources.filter(s => s.isCustom).length > 0 ? (
+                                    <View style={[styles.sourcesList, { marginBottom: 20 }]}>
+                                        {sources.filter(s => s.isCustom).map(src => (
+                                            <View key={src.id} style={styles.sourceItemRow}>
+                                                <View style={[styles.sourceItemBullet, { backgroundColor: src.color }]} />
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.sourceItemName}>{src.name}</Text>
+                                                    <Text style={styles.sourceItemMeta}>{src.category} • Custom Feed</Text>
+                                                </View>
+                                                
+                                                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.sourceToggleBtn,
+                                                            src.subscribed && styles.sourceToggleBtnActive
+                                                        ]}
+                                                        onPress={() => toggleSourceSubscription(src.id)}
+                                                    >
+                                                        <Text style={[
+                                                            styles.sourceToggleText,
+                                                            src.subscribed && styles.sourceToggleTextActive
+                                                        ]}>
+                                                            {src.subscribed ? 'Active' : 'Muted'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity 
+                                                        style={styles.deleteSourceBtn}
+                                                        onPress={() => {
+                                                            Alert.alert('Delete Source', `Are you sure you want to permanently delete custom source "${src.name}"?`, [
+                                                                { text: 'Cancel', style: 'cancel' },
+                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteCustomSource(src.id) }
+                                                            ]);
+                                                        }}
+                                                    >
+                                                        <Ionicons name="trash-outline" size={18} color={colors.error} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <View style={styles.emptyCustomBox}>
+                                        <Text style={styles.emptyCustomText}>No custom sources added yet.</Text>
+                                    </View>
+                                )}
+
+                                {/* Add Custom Source Form block */}
+                                <View style={styles.customSourceForm}>
+                                    <Text style={styles.formSectionTitle}>Add Custom Channel</Text>
+                                    
+                                    <Text style={styles.formLabel}>Source Name</Text>
+                                    <TextInput
+                                        style={styles.formInput}
+                                        placeholder="e.g. Hacker News, Product Hunt"
+                                        placeholderTextColor={colors.textTertiary}
+                                        value={newSourceName}
+                                        onChangeText={setNewSourceName}
+                                    />
+
+                                    <Text style={styles.formLabel}>Web URL / RSS Link (Optional)</Text>
+                                    <TextInput
+                                        style={styles.formInput}
+                                        placeholder="e.g. https://news.ycombinator.com"
+                                        placeholderTextColor={colors.textTertiary}
+                                        value={newSourceUrl}
+                                        onChangeText={setNewSourceUrl}
+                                        autoCapitalize="none"
+                                    />
+
+                                    <Text style={styles.formLabel}>Content Category</Text>
+                                    <View style={styles.formCategoryRow}>
+                                        {(['Tech', 'Business', 'Science', 'Design', 'World'] as const).map(cat => (
+                                            <TouchableOpacity
+                                                key={cat}
+                                                style={[
+                                                    styles.categoryChip,
+                                                    newSourceCategory === cat && styles.categoryChipActive
+                                                ]}
+                                                onPress={() => setNewSourceCategory(cat)}
+                                            >
+                                                <Text style={[
+                                                    styles.categoryChipText,
+                                                    newSourceCategory === cat && styles.categoryChipTextActive
+                                                ]}>
+                                                    {cat}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+
+                                    <TouchableOpacity 
+                                        style={styles.addSourceSubmitBtn}
+                                        onPress={() => {
+                                            if (!newSourceName.trim()) {
+                                                Alert.alert('Required Field', 'Please enter a source name to continue.');
+                                                return;
+                                            }
+                                            addCustomSource(newSourceName.trim(), newSourceUrl.trim(), newSourceCategory);
+                                            setNewSourceName('');
+                                            setNewSourceUrl('');
+                                            Alert.alert('Success', `Custom source "${newSourceName}" added and articles seeded successfully!`);
+                                        }}
+                                    >
+                                        <Text style={styles.addSourceSubmitText}>Register News Source</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
+                        )}
+                    </SafeAreaView>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -680,87 +1416,132 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         color: colors.primary,
         fontWeight: '600',
     },
+    liveDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#10B981',
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+    },
+    liveText: {
+        fontSize: 12,
+        color: '#10B981',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    lastSyncedText: {
+        fontSize: 11,
+        color: colors.textSecondary,
+    },
     weatherCard: {
-        borderRadius: 20,
-        padding: 20,
+        borderRadius: 24,
+        padding: 22,
         marginTop: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 15,
+        elevation: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     weatherHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 22,
     },
     weatherLocation: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 20,
+        fontWeight: '800',
         color: '#FFF',
+        letterSpacing: 0.3,
     },
     weatherCondition: {
         fontSize: 14,
         color: '#FFF',
-        opacity: 0.9,
+        opacity: 0.95,
         marginTop: 4,
+        fontWeight: '600',
     },
     weatherTempContainer: {
         alignItems: 'flex-end',
-        gap: 4,
+        gap: 2,
     },
     weatherTemp: {
-        fontSize: 48,
-        fontWeight: 'bold',
+        fontSize: 52,
+        fontWeight: '900',
         color: '#FFF',
+        lineHeight: 56,
     },
     weatherFeelsLike: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#FFF',
         opacity: 0.85,
         fontStyle: 'italic',
+        fontWeight: '500',
     },
     weatherDetails: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        marginBottom: 20,
-        paddingVertical: 12,
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        marginBottom: 22,
+        paddingVertical: 14,
+        paddingHorizontal: 8,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     weatherDetailItem: {
         alignItems: 'center',
-        gap: 4,
+        gap: 2,
+        flex: 1,
     },
     weatherDetailLabel: {
-        fontSize: 11,
-        color: '#FFF',
-        opacity: 0.8,
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.75)',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        marginTop: 4,
+        letterSpacing: 0.3,
     },
     weatherDetailValue: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '800',
         color: '#FFF',
+        marginTop: 2,
     },
     weatherForecast: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        gap: 4,
+        gap: 6,
     },
     weatherItem: {
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
         flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 12,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     weatherTime: {
-        fontSize: 12,
-        color: '#FFF',
-        opacity: 0.9,
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontWeight: '600',
     },
     weatherEmoji: {
-        fontSize: 24,
+        fontSize: 20,
+        marginVertical: 2,
     },
     weatherItemTemp: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         color: '#FFF',
     },
     weatherMood: {
@@ -848,39 +1629,547 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: colors.text,
+        lineHeight: 20,
     },
     newsSource: {
         fontSize: 12,
         color: colors.textSecondary,
-        marginTop: 4,
+    },
+    miniCategoryBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    miniCategoryText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    unreadDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#00F2FE',
+        marginHorizontal: 8,
+        shadowColor: '#00F2FE',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+    },
+    unreadDotMini: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#00F2FE',
+    },
+    emptyNewsContainer: {
+        alignItems: 'center',
+        paddingVertical: 32,
+        paddingHorizontal: 20,
+        backgroundColor: colors.surfaceSecondary,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    emptyNewsText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.text,
+        marginTop: 10,
+    },
+    emptyNewsSub: {
+        fontSize: 13,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 18,
+    },
+    emptyNewsBtn: {
+        marginTop: 16,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        backgroundColor: colors.primary + '15',
+        borderWidth: 1,
+        borderColor: colors.primary + '35',
+    },
+    emptyNewsBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.primary,
+    },
+    // Reader View styles
+    readerContainer: {
+        flex: 1,
+    },
+    readerGlowHeader: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 24,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+    },
+    readerTopActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    readerCloseBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    readerActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    readerActionText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.text,
+    },
+    readerHeaderMeta: {
+        gap: 12,
+    },
+    categoryBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    categoryBadgeText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#FFF',
+        textTransform: 'uppercase',
+    },
+    readerTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: colors.text,
+        lineHeight: 32,
+    },
+    readerSubRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    readerMetaText: {
+        fontSize: 13,
+        color: colors.textSecondary,
+    },
+    readerContentScroll: {
+        flex: 1,
+    },
+    readerContentContainer: {
+        padding: 20,
+        paddingBottom: 60,
+    },
+    readerBodyText: {
+        fontSize: 16,
+        lineHeight: 26,
+        color: colors.text,
+        fontWeight: '400',
+    },
+    readerFooterSeparator: {
+        height: 1,
+        backgroundColor: colors.border,
+        marginVertical: 24,
+    },
+    readerPlatformDisclaimer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: colors.surfaceSecondary,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    readerDisclaimerText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        flex: 1,
+        lineHeight: 16,
+    },
+    // Manager & Browser styles
+    newsDrawerContainer: {
+        backgroundColor: colors.surface,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        height: '90%',
+        width: '100%',
+        paddingTop: 12,
+    },
+    drawerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 16,
+    },
+    tabButtonsRow: {
+        flexDirection: 'row',
+        backgroundColor: colors.surfaceSecondary,
+        borderRadius: 20,
+        padding: 3,
+        gap: 4,
+    },
+    tabButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 18,
+    },
+    tabButtonActive: {
+        backgroundColor: colors.primary,
+    },
+    tabButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.textSecondary,
+    },
+    tabButtonTextActive: {
+        color: '#FFF',
+    },
+    drawerCloseIcon: {
+        padding: 2,
+    },
+    newsSearchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surfaceSecondary,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    newsSearchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: colors.text,
+    },
+    newsFilterRow: {
+        marginBottom: 12,
+        paddingLeft: 16,
+    },
+    newsFilterPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+        backgroundColor: colors.surfaceSecondary,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    newsFilterPillActive: {
+        backgroundColor: colors.primary + '15',
+        borderColor: colors.primary,
+    },
+    newsFilterPillText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    newsFilterPillTextActive: {
+        color: colors.primary,
+        fontWeight: 'bold',
+    },
+    newsDrawerCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surfaceSecondary + '50',
+        padding: 14,
+        borderRadius: 16,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 12,
+    },
+    newsDrawerSource: {
+        fontSize: 11,
+        color: colors.textSecondary,
+    },
+    newsDrawerTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text,
+        lineHeight: 18,
+        marginTop: 2,
+    },
+    drawerQuickActionBtn: {
+        padding: 6,
+    },
+    drawerSectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.text,
+        marginTop: 16,
+        marginBottom: 4,
+    },
+    drawerSectionSub: {
+        fontSize: 13,
+        color: colors.textSecondary,
+        marginBottom: 16,
+        lineHeight: 18,
+    },
+    sourcesList: {
+        gap: 10,
+    },
+    sourceItemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surfaceSecondary,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 10,
+    },
+    sourceItemBullet: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    sourceItemName: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: colors.text,
+    },
+    sourceItemMeta: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    sourceToggleBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    sourceToggleBtnActive: {
+        backgroundColor: colors.success + '15',
+        borderColor: colors.success,
+    },
+    sourceToggleText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        fontWeight: '600',
+    },
+    sourceToggleTextActive: {
+        color: colors.success,
+        fontWeight: 'bold',
+    },
+    deleteSourceBtn: {
+        padding: 8,
+        borderRadius: 10,
+        backgroundColor: colors.error + '10',
+    },
+    emptyCustomBox: {
+        alignItems: 'center',
+        paddingVertical: 20,
+        backgroundColor: colors.surfaceSecondary + '50',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderStyle: 'dashed',
+        marginBottom: 16,
+    },
+    emptyCustomText: {
+        fontSize: 13,
+        color: colors.textTertiary,
+    },
+    customSourceForm: {
+        marginTop: 24,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: colors.surfaceSecondary,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 10,
+    },
+    formSectionTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: colors.text,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    formLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.textSecondary,
+    },
+    formInput: {
+        backgroundColor: colors.surface,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        fontSize: 14,
+        color: colors.text,
+    },
+    formCategoryRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    categoryChip: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    categoryChipActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    categoryChipText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+    },
+    categoryChipTextActive: {
+        color: '#FFF',
+        fontWeight: 'bold',
+    },
+    addSourceSubmitBtn: {
+        marginTop: 12,
+        backgroundColor: colors.primary,
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    addSourceSubmitText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#FFF',
     },
     tipCard: {
-        backgroundColor: colors.surface,
-        borderRadius: 20,
-        padding: 24,
-        alignItems: 'center',
+        borderRadius: 24,
+        padding: 22,
         marginTop: 12,
-        shadowColor: colors.cardShadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
+        overflow: 'hidden',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    tipOrbDecor: {
+        position: 'absolute',
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: '#6366F1',
+        opacity: 0.08,
+        top: -60,
+        right: -40,
+    },
+    tipCardInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    tipLogoRow: {
+        position: 'relative',
+        width: 72,
+        height: 72,
+        flexShrink: 0,
+    },
+    tipLogoWrap: {
+        width: 72,
+        height: 72,
+    },
+    tipIconBadge: {
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        backgroundColor: 'rgba(99,102,241,0.25)',
+        borderRadius: 12,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(167,139,250,0.3)',
+    },
+    tipTextBlock: {
+        flex: 1,
+        gap: 6,
+    },
+    tipLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    tipPill: {
+        backgroundColor: 'rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(167,139,250,0.3)',
+    },
+    tipPillText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#C4B5FD',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    tipDots: {
+        flexDirection: 'row',
+        gap: 4,
+        alignItems: 'center',
+    },
+    tipDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: 'rgba(196,181,253,0.25)',
+    },
+    tipDotActive: {
+        width: 14,
+        backgroundColor: '#A78BFA',
     },
     tipIllustration: {
         marginBottom: 16,
     },
     tipTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: colors.text,
-        textAlign: 'center',
-        marginBottom: 8,
+        color: '#F5F3FF',
+        marginBottom: 5,
+        lineHeight: 20,
     },
     tipText: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 20,
+        fontSize: 13,
+        color: '#C4B5FD',
+        lineHeight: 19,
     },
     fab: {
         position: 'absolute',
@@ -975,36 +2264,47 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     },
     conditionCard: {
         width: '31%',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 16,
-        padding: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 18,
+        padding: 12,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
     },
     conditionIconBox: {
-        marginBottom: 8,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
     },
     conditionLabel: {
-        fontSize: 11,
+        fontSize: 10,
         color: '#FFF',
         opacity: 0.8,
         marginBottom: 4,
         textAlign: 'center',
+        fontWeight: '600',
     },
     conditionValue: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '800',
         color: '#FFF',
         textAlign: 'center',
     },
     sunSection: {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 20,
         padding: 16,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     sunItem: {
         flexDirection: 'row',
@@ -1078,15 +2378,15 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         textAlign: 'center',
     },
     hourlyDetailCard: {
-        marginHorizontal: 8,
-        width: 90,
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 14,
+        marginHorizontal: 6,
+        width: 96,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 18,
         padding: 12,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     hourlyMetrics: {
         width: '100%',
@@ -1124,12 +2424,12 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     dailyDetailCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 14,
-        padding: 14,
-        marginBottom: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     dayLeft: {
         alignItems: 'center',
@@ -1205,12 +2505,12 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         opacity: 0.8,
     },
     compassSection: {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 20,
         padding: 20,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
     },
     compassTitle: {
@@ -1290,12 +2590,38 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
         marginTop: 12,
         fontStyle: 'italic',
     },
+    separator: {
+        height: 1,
+        backgroundColor: colors.border,
+        marginVertical: 20,
+    },
+    tapHintContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 16,
+    },
     tapHint: {
         fontSize: 11,
         color: '#FFF',
-        opacity: 0.6,
-        textAlign: 'center',
-        marginTop: 8,
-        fontStyle: 'italic',
+        opacity: 0.85,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+    },
+    modalCloseFloatBtn: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
     },
 });

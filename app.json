@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show weather information.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show weather information."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show weather information.",
+        "NSCalendarsUsageDescription": "OrbitOne needs access to your calendar to display Google and iCloud Calendar events in your schedule timeline.",
+        "NSRemindersUsageDescription": "OrbitOne needs access to your reminders to sync tasks."
       }
     },
     "android": {
@@ -27,8 +29,8 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "package": "com.anonymous.orbitone"
     },

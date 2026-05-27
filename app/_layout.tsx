@@ -6,6 +6,7 @@ import { Colors } from '../constants/Colors';
 import { LocationProvider } from '../context/LocationContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { TasksProvider } from '../context/TasksContext';
+import { NewsProvider } from '../context/NewsContext';
 
 function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -92,7 +93,9 @@ export default function Layout() {
     <ThemeProvider>
       <LocationProvider>
         <TasksProvider>
-          <TabsLayout />
+          <NewsProvider>
+            <TabsLayout />
+          </NewsProvider>
         </TasksProvider>
       </LocationProvider>
     </ThemeProvider>
