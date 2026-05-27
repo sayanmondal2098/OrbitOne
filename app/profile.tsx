@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Switch, Modal, FlatList, TextInput, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
@@ -33,6 +33,7 @@ const PRESET_LOCATIONS = [
 ];
 
 export default function ProfileScreen() {
+    const insets = useSafeAreaInsets();
     const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
     const [showLocationsModal, setShowLocationsModal] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -123,13 +124,13 @@ export default function ProfileScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header with Profile */}
             <LinearGradient
                 colors={['#A18CD1', '#FBC2EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top + 20 }]}
             >
                 <View style={styles.profileSection}>
                     <LinearGradient
@@ -336,7 +337,7 @@ export default function ProfileScreen() {
                     />
                 </SafeAreaView>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

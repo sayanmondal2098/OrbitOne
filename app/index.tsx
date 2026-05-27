@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, ActivityIndicator, Platform, Modal, TextInput, Alert, Linking, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -96,6 +96,7 @@ function getHeaderTheme(hour: number): HeaderTheme {
 }
 
 export default function HomeScreen() {
+    const insets = useSafeAreaInsets();
     const weatherScale = useRef(new Animated.Value(0.8)).current;
     const weatherOpacity = useRef(new Animated.Value(0)).current;
     const { primaryLocation, weatherData, updateWeather, shouldRefreshWeather } = useLocation();
@@ -311,13 +312,13 @@ export default function HomeScreen() {
     const currentTip = DAILY_TIPS[tipIndex];
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header with gradient */}
             <LinearGradient
                 colors={headerTheme.colors}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
             >
                 <View style={styles.headerContent}>
                     <TouchableOpacity 
@@ -1339,7 +1340,7 @@ export default function HomeScreen() {
                     </SafeAreaView>
                 </TouchableOpacity>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

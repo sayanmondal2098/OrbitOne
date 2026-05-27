@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Modal, Linking, Platform, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
@@ -48,6 +48,7 @@ const formatMonthYear = (dateStr: string) => {
 };
 
 export default function CalendarScreen() {
+    const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const { tasks, toggleTaskCompletion } = useTasks();
     
@@ -252,13 +253,13 @@ export default function CalendarScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header */}
             <LinearGradient
                 colors={['#F093FB', '#F5576C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
             >
                 <View style={styles.headerTop}>
                     <Text style={styles.monthText}>{formatMonthYear(selectedDateStr)}</Text>
@@ -662,7 +663,7 @@ export default function CalendarScreen() {
                     </View>
                 </TouchableOpacity>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, View, ScrollView, Text, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useTheme } from '../context/ThemeContext';
 
 export default function HabitsScreen() {
+    const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const styles = React.useMemo(() => createStyles(colors), [colors]);
 
@@ -25,13 +26,13 @@ export default function HabitsScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header */}
             <LinearGradient
                 colors={['#43E97B', '#38F9D7']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
             >
                 <Text style={styles.headerTitle}>Habits</Text>
                 <Text style={styles.headerSubtitle}>Build better habits every day</Text>
@@ -148,7 +149,7 @@ export default function HabitsScreen() {
                     <Ionicons name="add" size={28} color="#FFF" />
                 </LinearGradient>
             </TouchableOpacity>
-        </SafeAreaView>
+        </View>
     );
 }
 

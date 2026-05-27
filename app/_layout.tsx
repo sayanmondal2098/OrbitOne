@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { LocationProvider } from '../context/LocationContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
@@ -90,14 +90,16 @@ function TabsLayout() {
 
 export default function Layout() {
   return (
-    <ThemeProvider>
-      <LocationProvider>
-        <TasksProvider>
-          <NewsProvider>
-            <TabsLayout />
-          </NewsProvider>
-        </TasksProvider>
-      </LocationProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <LocationProvider>
+          <TasksProvider>
+            <NewsProvider>
+              <TabsLayout />
+            </NewsProvider>
+          </TasksProvider>
+        </LocationProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

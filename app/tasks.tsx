@@ -16,7 +16,7 @@ import {
     LayoutAnimation,
     UIManager
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
@@ -162,6 +162,7 @@ const createSwipeStyles = (colors: typeof Colors.light) => StyleSheet.create({
 });
 
 export default function TasksScreen() {
+    const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const { 
         tasks, 
@@ -307,13 +308,13 @@ export default function TasksScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header */}
             <LinearGradient
                 colors={['#667EEA', '#764BA2']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top + 16 }]}
             >
                 <Text style={styles.headerTitle}>Tasks</Text>
                 <Text style={styles.headerSubtitle}>
@@ -841,7 +842,7 @@ export default function TasksScreen() {
                     </TouchableOpacity>
                 </KeyboardAvoidingView>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 
