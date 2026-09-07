@@ -3,6 +3,8 @@ import { StyleSheet, View, ScrollView, Text, TouchableOpacity, Animated, Activit
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import { safeArticleUrl } from '../services/newsFeed';
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -290,6 +292,7 @@ export default function HomeScreen() {
         markAllArticlesAsRead,
         isSyncing,
         lastSynced,
+        syncError,
         syncNews
     } = useNews();
 
@@ -546,7 +549,7 @@ export default function HomeScreen() {
                                         styles.liveDot,
                                         { transform: [{ scale: pulseValue }] }
                                     ]} />
-                                    <Text style={styles.liveText}>Live</Text>
+                                    <Text style={styles.liveText}>{syncError ? 'Saved' : lastSynced ? 'Updated' : 'News'}</Text>
                                 </View>
                             )}
                             {lastSynced && (
@@ -567,6 +570,11 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
                     
+                    {syncError && (
+                        <TouchableOpacity onPress={() => syncNews()} disabled={isSyncing} accessibilityRole="button" style={{ paddingBottom: 12 }}>
+                            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{syncError} Tap to retry.</Text>
+                        </TouchableOpacity>
+                    )}
                     {articles.length > 0 ? (
                         articles.slice(0, 4).map((article) => (
                             <TouchableOpacity 
@@ -613,9 +621,9 @@ export default function HomeScreen() {
                     ) : (
                         <View style={styles.emptyNewsContainer}>
                             <Ionicons name="newspaper-outline" size={40} color={colors.textTertiary} />
-                            <Text style={styles.emptyNewsText}>No news active</Text>
+                            <Text style={styles.emptyNewsText}>{isSyncing ? 'Loading headlines?' : sources.some(source => source.subscribed) ? 'No headlines yet' : 'Choose your news sources'}</Text>
                             <Text style={styles.emptyNewsSub}>
-                                Subscribe to some news sources in the News Manager to start reading daily updates!
+                                {sources.some(source => source.subscribed) ? 'Pull down to refresh, or manage your sources below.' : 'Subscribe to news sources to start reading daily updates.'}
                             </Text>
                             <TouchableOpacity 
                                 style={styles.emptyNewsBtn}
@@ -989,27 +997,28 @@ export default function HomeScreen() {
                             <View style={styles.readerPlatformDisclaimer}>
                                 <Ionicons name="shield-checkmark-outline" size={16} color={colors.textTertiary} />
                                 <Text style={styles.readerDisclaimerText}>
-                                    Clean Reader Mode enabled. Ad-free, tracking-free, optimized reading environment.
+                                    Publisher preview. Read the full article for the complete story and context.
                                 </Text>
                             </View>
 
                             {/* Share & Open Links */}
                             <TouchableOpacity 
                                 style={[styles.emptyNewsBtn, { alignSelf: 'center', marginTop: 12 }]}
-                                onPress={() => {
-                                    Alert.alert('Open Original Source', 'Redirecting to native news browser...', [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Open Feed', onPress: () => {
-                                            if (currentActiveArticle.url) {
-                                                Linking.openURL(currentActiveArticle.url);
-                                            } else {
-                                                Alert.alert('Demo Source', 'Custom feed mock link opened successfully.');
-                                            }
-                                        }}
-                                    ]);
+                                onPress={async () => {
+                                    const url = safeArticleUrl(currentActiveArticle.url || '');
+                                    if (!url) {
+                                        Alert.alert('Article unavailable', 'This article does not have a valid publisher link.');
+                                        return;
+                                    }
+                                    try {
+                                        if (Platform.OS === 'web') await Linking.openURL(url);
+                                        else await WebBrowser.openBrowserAsync(url, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
+                                    } catch {
+                                        Alert.alert('Could not open article', 'Please check your connection and try again.');
+                                    }
                                 }}
                             >
-                                <Text style={styles.emptyNewsBtnText}>View Source Feed</Text>
+                                <Text style={styles.emptyNewsBtnText}>Read full article</Text>
                             </TouchableOpacity>
                         </ScrollView>
                         </SafeAreaView>
@@ -1348,7 +1357,7 @@ export default function HomeScreen() {
                                     <Text style={styles.formLabel}>Web URL / RSS Link (Optional)</Text>
                                     <TextInput
                                         style={styles.formInput}
-                                        placeholder="e.g. https://news.ycombinator.com"
+                                        placeholder="e.g. https://www.nasa.gov/feed/"
                                         placeholderTextColor={colors.textTertiary}
                                         value={newSourceUrl}
                                         onChangeText={setNewSourceUrl}
@@ -1378,15 +1387,15 @@ export default function HomeScreen() {
 
                                     <TouchableOpacity 
                                         style={styles.addSourceSubmitBtn}
-                                        onPress={() => {
-                                            if (!newSourceName.trim()) {
-                                                Alert.alert('Required Field', 'Please enter a source name to continue.');
-                                                return;
+                                        onPress={async () => {
+                                            try {
+                                                await addCustomSource(newSourceName.trim(), newSourceUrl.trim(), newSourceCategory);
+                                                setNewSourceName('');
+                                                setNewSourceUrl('');
+                                                Alert.alert('Source added', 'Your feed is ready to read.');
+                                            } catch (error) {
+                                                Alert.alert('Could not add source', error instanceof Error ? error.message : 'Please try again.');
                                             }
-                                            addCustomSource(newSourceName.trim(), newSourceUrl.trim(), newSourceCategory);
-                                            setNewSourceName('');
-                                            setNewSourceUrl('');
-                                            Alert.alert('Success', `Custom source "${newSourceName}" added and articles seeded successfully!`);
                                         }}
                                     >
                                         <Text style={styles.addSourceSubmitText}>Register News Source</Text>
