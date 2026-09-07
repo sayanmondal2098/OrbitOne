@@ -18,8 +18,10 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show weather information.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show weather information.",
         "NSCalendarsUsageDescription": "OrbitOne needs access to your calendar to display Google and iCloud Calendar events in your schedule timeline.",
-        "NSRemindersUsageDescription": "OrbitOne needs access to your reminders to sync tasks."
-      }
+        "NSRemindersUsageDescription": "OrbitOne needs access to your reminders to sync tasks.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.anonymous.orbitone"
     },
     "android": {
       "adaptiveIcon": {
